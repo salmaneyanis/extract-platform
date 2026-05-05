@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+venv/
+venv-*/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Données sensibles — JAMAIS commitées
+.env
+.env.local
+.env.production
+*.pem
+*.key
+
+# Fichiers générés
+*.log
+*.db
+*.sqlite
+
+# Docker
+docker-compose.override.yml
+
+# Cache Docling
+docling-cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Données du projet (si tu fais des tests locaux)
+data/
+*.pdf
+!docs/*.pdf  # exception pour les PDFs de documentation
