@@ -1,6 +1,6 @@
 services:
   main_services:
-    build: ./main_services
+    build: ./main_service
     ports:
       - "3000:8000"
     environment:
