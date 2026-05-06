@@ -1,0 +1,69 @@
+services:
+  main_services:
+    build: ./main_services
+    ports:
+      - "3000:8000"
+    environment:
+      - EXTRACT_URL=http://extract:8001
+      - RETRIEVE_URL=http://retrieve:8002
+      - STORE_URL=http://store_data:8003
+    depends_on:
+      - extract
+      - retrieve
+      - store_data
+    networks:
+      - network
+    restart: unless-stopped
+  extract:
+    build: ./extract
+    ports:
+      - "3001:8001"
+    networks:
+      - network
+    restart: unless-stopped
+  retrieve:
+    build: ./retrieve
+    ports:
+      - "3002:8002"
+    volumes:
+      - retrieve_data:/data
+    networks:
+      - network
+    restart: unless-stopped
+    
+  store_data:
+    build: ./store_data
+    ports:
+      - "3003:8003"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:pass@store_db:5432/mydb
+    depends_on:
+      - store_db
+    networks:
+      - network
+    restart: unless-stopped
+
+  store_db:
+    image: postgres:16
+    ports:
+      - "3013:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - network
+    restart: unless-stopped
+
+   
+      
+
+volumes:
+  postgres_data:
+  retrieve_data:
+  
+networks:
+  network:
+    
