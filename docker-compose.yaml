@@ -12,14 +12,16 @@ services:
       - retrieve
       - store_data
     networks:
-      - network
+      - retrieve-network
+      - extract-network
+      - store-network
     restart: unless-stopped
   extract:
     build: ./extract
     ports:
       - "3001:8001"
     networks:
-      - network
+      - extract-network
     restart: unless-stopped
   retrieve:
     build: ./retrieve
@@ -28,7 +30,7 @@ services:
     volumes:
       - retrieve_data:/data
     networks:
-      - network
+      - retrieve-network
     restart: unless-stopped
     
   store_data:
@@ -40,7 +42,8 @@ services:
     depends_on:
       - store_db
     networks:
-      - network
+      - store-network
+      - db-network
     restart: unless-stopped
 
   store_db:
@@ -54,16 +57,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - network
+      - db-network
     restart: unless-stopped
-
-   
-      
 
 volumes:
   postgres_data:
   retrieve_data:
   
 networks:
-  network:
+  retrieve-network:
+  extract-network:
+  store-network:
+  db-network:
+
     
