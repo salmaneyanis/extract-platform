@@ -5,13 +5,76 @@ import FileUploadResponse, from "../schemas/file_schemas.py"
 import write
 
 
-class FileTooBigError(Exception):
-    """Le fichier dépasse la taille maximale autorisée."""
+class FileEmptyError(Exception):
     pass
 
-class FileEmptyError(Exception):
-    """Le fichier est vide """
+class FileTooLargeError(Exception):
     pass
+
+class InvalidPathError(Exception):
+    pass
+
+class StorageError(Exception):
+    pass
+
+
+def _validate_filename(filename: str) -> None:
+    """Valide qu'un nom de fichier est utilisable."""
+
+    invalid_username_characters = ["/", "\\"]
+
+    if not filename or not filename.strip() :
+        raise InvalidPathError("Nom de fichier invalide")
+
+    elif len(filename) > 255:
+        raise InvalidPathError("Nom de fichier trop long")
+
+    elif any(x in filename for x in invalid_username_characters):
+        raise InvalidPathError("Nom de fichier invalide")
+        
+    elif filename in (".", ".."):
+    raise InvalidPathError("Nom de fichier invalide")
+    
+
+
+def _validate_path(file_path: str) -> Path:
+    """
+    Valide qu'un path est sûr et reste sous DATA_DIR.
+    Retourne le path absolu validé.
+    """
+    
+
+    if not file_path or not file_path.strip():
+        raise InvalidPathError("Le chemin ne peut pas être vide")
+    
+
+    if file_path.startswith("/"):
+        raise InvalidPathError("Le chemin doit être relatif, pas absolu")
+    
+
+    absolute_path = (DATA_DIR / file_path).resolve()
+
+    try:
+        absolute_path.relative_to(DATA_DIR.resolve())
+    except ValueError:
+        raise InvalidPathError(
+            f"Le chemin sort de la zone autorisée : {file_path}"
+        )
+    
+    return absolute_path
+
+
+def _validate_size(content: bytes) -> None:
+    """Valide que la taille du contenu est acceptable."""
+    
+    if len(content) == 0:
+        raise InvalidPathError("Le fichier est vide")
+    
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise FileTooLargeError(
+            f"Fichier trop volumineux : {len(content)} bytes "
+            f"(maximum autorisé : {MAX_FILE_SIZE_BYTES} bytes)"
+        )
 
 
 
