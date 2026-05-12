@@ -1,10 +1,9 @@
 from enum import Enum
 from datetime import datetime
+from app.config import MAX_FILE_SIZE_BYTES
+from pydantic import BaseModel, field_validator
 
-from pydantic import BaseModel, validator
 
-MAX_FILE_SIZE_MB = int(os.getenv("RETRIEVE_MAX_FILE_SIZE_MB", "100"))
-MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 # classe python 
 class Category(str,Enum):
@@ -40,26 +39,33 @@ class FileUploadResponse(BaseModel):
     @field_validator("file_name")
     def verify_file_name(cls,name):
         """Vérifie le nom du fichier donné est valide """
-        if not name or len(name) = 0:
+        if not name:
             raise ValueError("Nom du fichier vide")
+        return name
 
     @field_validator("file_size")
+    @classmethod  
     def verify_file_size(cls,size):
         """Vérifie que la taille du fichié est valide """
         if size < 0 or size > MAX_FILE_SIZE_BYTES :
-            raise ValueError("La taille du fichier est invalide, il doit être faire au maximum :" + MAX_FILE_SIZE_BYTES)
-    
+            raise ValueError("La taille du fichier est invalide, il doit être faire au maximum : {MAX_FILE_SIZE_BYTES}" )
+        return size
+
     @field_validator("file_path")
-    def verify_file_path(cls,file_path):
+    @classmethod  
+    def verify_file_path(cls,path):
         """Vérifie que le chemin  du fichier est valide """
-        if not file_path or len(file_path) = 0:
-            raise ValueError("La taille du fichier est invalide, il doit être faire au maximum :" + MAX_FILE_SIZE_BYTES)
-    
-    @field_validator("filetype")
+        if not path :
+            raise ValueError("La taille du fichier est invalide, il doit être faire au maximum : {MAX_FILE_SIZE_BYTES}")
+        return path
+
+    @field_validator("file_type")
+    @classmethod  
     def verify_file_type(cls,typefile):
         """Vérifie le type du fichier donné est valide """
-        if not typefile or len(typefile) = 0:
+        if not typefile:
             raise ValueError("type du fichier vide")
+        return typefile 
 
 
 #classe qui défini la structure de la réponse pour le deletefile qui sera renvoyé au service principale 
@@ -69,3 +75,18 @@ class FileDeleteResponse(BaseModel):
     deleted_at: datetime
     status: Status
 
+    @field_validator("file_name")
+      @classmethod 
+    def verify_file_name(cls,name):
+        """Vérifie le nom du fichier donné est valide """
+        if not name or len(name) == 0:
+            raise ValueError("Nom du fichier vide")
+        return name
+    
+    @field_validator("file_path")
+    @classmethod 
+    def verify_file_path(cls,path):
+        """Vérifie que le chemin  du fichier est valide """
+        if not path or len(path) = 0:
+            raise ValueError("La taille du fichier est invalide, il doit être faire au maximum :" + MAX_FILE_SIZE_BYTES)
+        return path
