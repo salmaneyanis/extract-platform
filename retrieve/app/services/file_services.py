@@ -1,15 +1,18 @@
 import os
 import uuid
 from pathlib import Path
+import FileUploadResponse from "../schemas/file_schemas.py"
 
 DATA_DIR = Path(os.getenv("RETRIEVE_DATA_DIR", "/data"))
 MAX_FILE_SIZE_MB = int(os.getenv("RETRIEVE_MAX_FILE_SIZE_MB", "100"))
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-save_file(request: ):
+async def save_file(content: bytes, filename: str, category: Category) -> FileUploadResponse:
+   
 
 
-get_files():
+
+async def get_files():
 
 
-delete_files():
+async def delete_files():
