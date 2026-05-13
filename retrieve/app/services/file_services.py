@@ -1,5 +1,4 @@
 import os
-import uuid
 from pathlib import Path
 import FileUploadResponse, from "../schemas/file_schemas.py"
 import write
@@ -34,6 +33,20 @@ def _validate_filename(filename: str) -> None:
         
     elif filename in (".", ".."):
     raise InvalidPathError("Nom de fichier invalide")
+
+
+def _validate_doc_id(doc_id: str) -> None:
+    """Valide qu'un doc_id est utilisable comme nom de dossier """
+
+    if not doc_id or not doc_id.strip():
+        raise InvalidPathError("Le doc_id ne peut être vide")
+
+    invalid_username_characters = ["/", "\\"]
+    if any(c in doc_id for c in invalid_characters):
+        raise InvalidPathError("Le doc_id contient des caractères interdits")
+
+    if doc_id in (".",".."):
+        raise InvalidPathError("doc_id invalide")
     
 
 
@@ -78,15 +91,18 @@ def _validate_size(content: bytes) -> None:
 
 
 
-async def save_file(content: bytes, filename: str, category: Category,content_type: str) -> FileUploadResponse:
+async def save_file(content: bytes, filename: str, category: Category,content_type: str, doc_id: str) -> FileUploadResponse:
+    """ Sauvegarder un fichier dans un répertoire précis et va retourner une reponse positif en cas de réussite """
     if (len(content) > MAX_FILE_SIZE_BYTES):
         raise FileTooBigError(f"Fichier de {len(content)} bytes, max autorisé : {MAX_FILE_SIZE_BYTES}")
     elif len(content) == 0:
         raise FileEmptyError(f"Fichier donné est vide")
 
-    uid = str(uuid.uuid4())
     _validate_filename(filename)
-    path = f"{category.value}/{uid}/{filename}"
+    _validate_size(content)
+    _validate_doc_id(doc_id)
+    
+    path = f"{category.value}/{doc_id}/{filename}"
     absolute_path = _validate_path(relative_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -109,7 +125,8 @@ async def save_file(content: bytes, filename: str, category: Category,content_ty
 
 
 
-async def get_files():
+async def get_files(filename: str, ):
+    """ retourne dans la requête le fichier demander """
 
 
 async def delete_files():
