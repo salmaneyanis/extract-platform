@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import FileUploadResponse, from "../schemas/file_schemas.py"
 import write
+import StreamingResponse, FileResponse from fastapi.responses
 
 
 class FileEmptyError(Exception):
@@ -125,8 +126,34 @@ async def save_file(content: bytes, filename: str, category: Category,content_ty
 
 
 
-async def get_files(filename: str, ):
-    """ retourne dans la requête le fichier demander """
+async def get_file(file_path: str) -> Path:
+    """Retourne le chemin absolu d'un fichier validé pour lecture."""
+    
+    absolute_path = _validate_path(file_path)
+    
+    if not absolute_path.is_file():
+        raise FileMissingError(f"Fichier introuvable : {file_path}")
+    
+    return absolute_path
 
 
-async def delete_files():
+
+async def delete_files(file_path: str, filename: str) -> FileDeleteResponse:
+    absolute_path = _validate_path(file_path)
+    
+    if not absolute_path.is_file():
+        raise FileMissingError(f"Fichier introuvable : {file_path}")
+
+    try:
+        absolute_path.unlink()
+    except OSerror as e:
+        raise StorageError(f"Erreur de suppression :  {e}")
+    
+    res: FileDeleteResponse = (
+        file_name= filename,
+        file_path= file_path,
+        deleted_at= datetime.now(),
+        status=DONE
+    )
+    return res
+
