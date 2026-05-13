@@ -1,8 +1,9 @@
-import os
+from datetime import datetime
 from pathlib import Path
-import FileUploadResponse, from "../schemas/file_schemas.py"
-import write
-import StreamingResponse, FileResponse from fastapi.responses
+from app.schemas.file_schemas import FileUploadResponse, FileDeleteResponse, Category
+from fastapi.responses import StreamingResponse, FileResponse
+import aiofiles
+from app.config import DATA_DIR, MAX_FILE_SIZE_BYTES
 
 
 class FileEmptyError(Exception):
@@ -16,6 +17,10 @@ class InvalidPathError(Exception):
 
 class StorageError(Exception):
     pass
+
+class FileMissingError(Exception):
+    pass
+
 
 
 def _validate_filename(filename: str) -> None:
@@ -33,7 +38,7 @@ def _validate_filename(filename: str) -> None:
         raise InvalidPathError("Nom de fichier invalide")
         
     elif filename in (".", ".."):
-    raise InvalidPathError("Nom de fichier invalide")
+        raise InvalidPathError("Nom de fichier invalide")
 
 
 def _validate_doc_id(doc_id: str) -> None:
@@ -42,7 +47,7 @@ def _validate_doc_id(doc_id: str) -> None:
     if not doc_id or not doc_id.strip():
         raise InvalidPathError("Le doc_id ne peut être vide")
 
-    invalid_username_characters = ["/", "\\"]
+    invalid_characters = ["/", "\\"]
     if any(c in doc_id for c in invalid_characters):
         raise InvalidPathError("Le doc_id contient des caractères interdits")
 
@@ -64,9 +69,8 @@ def _validate_path(file_path: str) -> Path:
 
     if file_path.startswith("/"):
         raise InvalidPathError("Le chemin doit être relatif, pas absolu")
-    
-
     absolute_path = (DATA_DIR / file_path).resolve()
+
 
     try:
         absolute_path.relative_to(DATA_DIR.resolve())
@@ -80,10 +84,10 @@ def _validate_path(file_path: str) -> Path:
 
 def _validate_size(content: bytes) -> None:
     """Valide que la taille du contenu est acceptable."""
-    
+
     if len(content) == 0:
-        raise InvalidPathError("Le fichier est vide")
-    
+        raise FileEmptyError("Le fichier est vide")
+
     if len(content) > MAX_FILE_SIZE_BYTES:
         raise FileTooLargeError(
             f"Fichier trop volumineux : {len(content)} bytes "
@@ -92,28 +96,23 @@ def _validate_size(content: bytes) -> None:
 
 
 
-async def save_file(content: bytes, filename: str, category: Category,content_type: str, doc_id: str) -> FileUploadResponse:
-    """ Sauvegarder un fichier dans un répertoire précis et va retourner une reponse positif en cas de réussite """
-    if (len(content) > MAX_FILE_SIZE_BYTES):
-        raise FileTooBigError(f"Fichier de {len(content)} bytes, max autorisé : {MAX_FILE_SIZE_BYTES}")
-    elif len(content) == 0:
-        raise FileEmptyError(f"Fichier donné est vide")
-
+async def save_file(content: bytes, filename: str, category: Category, content_type: str, doc_id: str) -> FileUploadResponse:
+    """Sauvegarder un fichier dans un répertoire précis et retourner une réponse en cas de réussite."""
     _validate_filename(filename)
     _validate_size(content)
     _validate_doc_id(doc_id)
-    
+
     path = f"{category.value}/{doc_id}/{filename}"
-    absolute_path = _validate_path(relative_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    absolute_path = _validate_path(path)
+    absolute_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        async with aiofiles.open(path, "wb") as f:
+        async with aiofiles.open(absolute_path, "wb") as f:
             await f.write(content)
-    except OSerror as e:
+    except OSError as e:
         raise StorageError(f"Erreur d'écriture : {e}")
-    
-    res: FileUploadResponse = (
-        file_path=relative_path,
+
+    res = FileUploadResponse(
+        file_path=path,
         file_name=filename,
         file_size=len(content),
         content_type=content_type,
@@ -138,7 +137,7 @@ async def get_file(file_path: str) -> Path:
 
 
 
-async def delete_files(file_path: str, filename: str) -> FileDeleteResponse:
+async def delete_file(file_path: str) -> FileDeleteResponse:
     absolute_path = _validate_path(file_path)
     
     if not absolute_path.is_file():
@@ -146,14 +145,13 @@ async def delete_files(file_path: str, filename: str) -> FileDeleteResponse:
 
     try:
         absolute_path.unlink()
-    except OSerror as e:
+    except OSError as e:
         raise StorageError(f"Erreur de suppression :  {e}")
     
-    res: FileDeleteResponse = (
-        file_name= filename,
+    res = FileDeleteResponse(
+        file_name= absolute_path.name,
         file_path= file_path,
         deleted_at= datetime.now(),
-        status=DONE
     )
     return res
 

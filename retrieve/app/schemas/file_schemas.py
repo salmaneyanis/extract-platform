@@ -11,11 +11,6 @@ class Category(str,Enum):
     PARSES = "parses"
     ARTIFACTS = "artifacts"
 
-#classe qui définie les status de requête
-class Status(str,Enum):
-    PENDING = "pending"
-    DONE = "done"
-    FAILED = "failed"
 
 class FileExtension(str, Enum):
     PDF = ".pdf"
@@ -34,7 +29,6 @@ class FileUploadResponse(BaseModel):
     file_type: str
     category: Category
     stored_at: datetime
-    status: Status
 
     @field_validator("file_name")
     def verify_file_name(cls,name):
@@ -73,10 +67,9 @@ class FileDeleteResponse(BaseModel):
     file_name: str
     file_path: str
     deleted_at: datetime
-    status: Status
 
     @field_validator("file_name")
-      @classmethod 
+    @classmethod 
     def verify_file_name(cls,name):
         """Vérifie le nom du fichier donné est valide """
         if not name or len(name) == 0:
@@ -87,6 +80,6 @@ class FileDeleteResponse(BaseModel):
     @classmethod 
     def verify_file_path(cls,path):
         """Vérifie que le chemin  du fichier est valide """
-        if not path or len(path) = 0:
+        if not path or len(path) == 0:
             raise ValueError("La taille du fichier est invalide, il doit être faire au maximum :" + MAX_FILE_SIZE_BYTES)
         return path
