@@ -144,6 +144,7 @@ async def delete_file(file_path: str) -> FileDeleteResponse:
 
     try:
         absolute_path.unlink()
+        absolute_path.parent.rmdir()
     except OSError as e:
         raise StorageError(f"Erreur de suppression :  {e}")
     
