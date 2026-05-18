@@ -1,12 +1,7 @@
-# retrieve_main.py
-
 from fastapi import FastAPI
 from app.controllers.files_controller import router as files_router
 
-
 app = FastAPI(title="Retrieve Service")
-
-
 app.include_router(files_router)
 
 

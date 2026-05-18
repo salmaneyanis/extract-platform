@@ -26,7 +26,6 @@ class FileUploadResponse(BaseModel):
     file_name: str
     file_size: int
     file_path: str
-    file_type: str
     category: Category
     stored_at: datetime
 
@@ -53,13 +52,6 @@ class FileUploadResponse(BaseModel):
             raise ValueError("La taille du fichier est invalide, il doit être faire au maximum : {MAX_FILE_SIZE_BYTES}")
         return path
 
-    @field_validator("file_type")
-    @classmethod  
-    def verify_file_type(cls,typefile):
-        """Vérifie le type du fichier donné est valide """
-        if not typefile:
-            raise ValueError("type du fichier vide")
-        return typefile 
 
 
 #classe qui défini la structure de la réponse pour le deletefile qui sera renvoyé au service principale 

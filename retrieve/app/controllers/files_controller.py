@@ -6,7 +6,7 @@ from app.schemas.file_schemas import (
     FileUploadResponse,
     FileDeleteResponse,
 )
-from app.services.file_service import (
+from app.services.file_services import (
     save_file,
     get_file,
     delete_file,
@@ -33,7 +33,6 @@ async def upload(
             content=content,
             filename=uploaded_file.filename,
             category=category,
-            content_type=uploaded_file.content_type or "application/octet-stream",
             doc_id=doc_id,
         )
         return result

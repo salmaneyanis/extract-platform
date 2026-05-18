@@ -96,7 +96,7 @@ def _validate_size(content: bytes) -> None:
 
 
 
-async def save_file(content: bytes, filename: str, category: Category, content_type: str, doc_id: str) -> FileUploadResponse:
+async def save_file(content: bytes, filename: str, category: Category, doc_id: str) -> FileUploadResponse:
     """Sauvegarder un fichier dans un répertoire précis et retourner une réponse en cas de réussite."""
     _validate_filename(filename)
     _validate_size(content)
@@ -115,7 +115,6 @@ async def save_file(content: bytes, filename: str, category: Category, content_t
         file_path=path,
         file_name=filename,
         file_size=len(content),
-        content_type=content_type,
         category=category,
         stored_at=datetime.now(),
     )
