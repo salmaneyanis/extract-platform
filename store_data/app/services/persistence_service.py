@@ -4,6 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.document_model import Document
 from app.schemas.document_schemas import DocumentCreate, DocumentUpdate
 
+class DocumentNotFoundError(Exception):
+    """Levée quand un document n'existe pas en BDD."""
+    pass
+
+
+class DatabaseError(Exception):
+    """Erreur générique de base de données."""
+    pass
 
 async def create_document(db: AsyncSession, data: DocumentCreate) -> Document:
     """  """
@@ -23,6 +31,9 @@ async def create_document(db: AsyncSession, data: DocumentCreate) -> Document:
 async def get_document(db: AsyncSession, doc_id: int) -> Document | None:
     result = await db.execute(select(Document).where(Document.id == doc_id))
     document = result.scalar_one_or_none()
+
+    if document is None:
+        raise DocumentNotFoundError(f"Document {doc_id} introuvable")
 
     return document
 
@@ -50,8 +61,8 @@ async def update_document(db: AsyncSession, doc_id: int, data: DocumentUpdate) -
     
 
 async def delete_document(db: AsyncSession, doc_id: int) -> None:
-    result = await db.execute(select(Item).filter(Item.id == item_id))
+    result = await db.execute(select(Document).filter(Document.id == doc_id))
     db_item = result.scalar_one_or_none()
-    await db.delete(d_item)
+    await db.delete(db_item)
     await db.commit()
     return None
