@@ -1,5 +1,6 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB 
 from app.database import Base
 from app.schemas.document_schemas import Category, Status
 
@@ -16,3 +17,9 @@ class Document(Base):
     status = Column(Enum(Status), default=Status.PENDING, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+
+
+
+
