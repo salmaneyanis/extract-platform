@@ -34,17 +34,19 @@ services:
     restart: unless-stopped
     
   store_data:
-    build: ./store_data
-    ports:
-      - "3003:8003"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://user:pass@store_db:5432/mydb
-    depends_on:
-      - store_db
-    networks:
-      - store-network
-      - db-network
-    restart: unless-stopped
+  build: ./store_data
+  ports:
+    - "3003:8003"
+  volumes:
+    - ./store_data:/app             
+  environment:
+    - DATABASE_URL=postgresql+asyncpg://user:pass@store_db:5432/mydb
+  depends_on:
+    - store_db
+  networks:
+    - store-network
+    - db-network
+  restart: unless-stopped
 
   store_db:
     image: postgres:16
