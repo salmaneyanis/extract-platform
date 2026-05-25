@@ -42,3 +42,6 @@ async def update(doc_id: int, data: DocumentUpdate, db: AsyncSession = Depends(g
 @router.delete("/{doc_id}", status_code=204) 
 async def delete(doc_id: int, db: AsyncSession = Depends(get_db)):
     await delete_document(db, doc_id)
+
+
+ 

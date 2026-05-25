@@ -29,7 +29,7 @@ async def create_document(db: AsyncSession, data: DocumentCreate) -> Document:
 
 
 async def get_document(db: AsyncSession, doc_id: int) -> Document | None:
-    result = await db.execute(select(Document).where(Document.id == doc_id))
+    result = await db.execute(select(Document).where(Document.doc_id == doc_id))
     document = result.scalar_one_or_none()
 
     if document is None:
@@ -43,7 +43,7 @@ async def list_documents(db: AsyncSession, skip: int = 0, limit: int = 100) -> l
         .order_by(Document.created_at.desc())
         .limit(limit)
         .offset(skip)
-    )
+    ) 
     return result.scalars().all()
 
 async def update_document(db: AsyncSession, doc_id: int, data: DocumentUpdate) -> Document:
@@ -61,7 +61,7 @@ async def update_document(db: AsyncSession, doc_id: int, data: DocumentUpdate) -
     
 
 async def delete_document(db: AsyncSession, doc_id: int) -> None:
-    result = await db.execute(select(Document).filter(Document.id == doc_id))
+    result = await db.execute(select(Document).filter(Document.doc_id == doc_id))
     db_item = result.scalar_one_or_none()
     await db.delete(db_item)
     await db.commit()
