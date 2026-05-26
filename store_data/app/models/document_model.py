@@ -1,53 +1,61 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB 
-from app.database import Base
-from app.schemas.document_schemas import Category, Status
-
-
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, LargeBinary
+from sqlalchemy import (
+    Column,
+    BigInteger,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    Enum as SQLEnum,
+)
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from app.database import Base
 from app.schemas.document_schemas import Category, Status
-
-
-class Metadata(Base):
-    __tablename__ = "metadata"
-
-    metadata_id = Column(Integer, primary_key=True)
-    content = Column(LargeBinary, nullable=False)
-
-
-class Document_Parse(Base):
-    __tablename__ = "document_parse"
-
-    doc_id = Column(Integer, ForeignKey("metadata.metadata_id", ondelete="CASCADE"), primary_key=True)
-    representation_type = Column(String, nullable=True)
-    content = Column(LargeBinary, nullable=False)
-    date = Column(DateTime, default=datetime.utcnow, nullable=False)
-
-
-class Jobs(Base):
-    __tablename__ = "jobs"
-
-    id = Column(Integer, primary_key=True)
-    file_path = Column(String, nullable=True)
-    status = Column(Enum(Status), default=Status.PENDING, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class Document(Base):
     __tablename__ = "documents"
+    
+    doc_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    file_name = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=True)
+    file_size = Column(BigInteger, nullable=True)
+    content_type = Column(String(100), nullable=True)
+    category = Column(SQLEnum(Category), nullable=False)
+    status = Column(SQLEnum(Status), nullable=False, default=Status.PENDING)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    parses = relationship("DocumentParse", back_populates="document", cascade="all, delete-orphan")
+    jobs = relationship("Job", back_populates="document", cascade="all, delete-orphan")
 
-    doc_id = Column(Integer, ForeignKey("document_parse.doc_id", ondelete="CASCADE"), primary_key=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True)
-    file_name = Column(String, nullable=False)
-    file_path = Column(String, nullable=True)
-    file_size = Column(Integer, nullable=True)
-    content_type = Column(String, nullable=True)
-    category = Column(Enum(Category), nullable=False)
-    status = Column(Enum(Status), default=Status.PENDING, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+class DocumentParse(Base):
+    __tablename__ = "document_parses"
+    
+    parse_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    doc_id = Column(BigInteger, ForeignKey("documents.doc_id", ondelete="CASCADE"), nullable=False)
+    representation_type = Column(String(50), nullable=False)
+    content_json = Column(JSONB, nullable=True)
+    content_text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    document = relationship("Document", back_populates="parses")
+
+
+class Job(Base):
+    __tablename__ = "jobs"
+    
+    job_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    doc_id = Column(BigInteger, ForeignKey("documents.doc_id", ondelete="CASCADE"), nullable=True)
+    job_type = Column(String(50), nullable=False)
+    status = Column(SQLEnum(Status), nullable=False, default=Status.PENDING)
+    result = Column(JSONB, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+    
+    document = relationship("Document", back_populates="jobs")
