@@ -1,17 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.document_model import Document
+from app.models.document_model import DocumentParse
+from app.services.exceptions import DocumentParseNotFoundError, DatabaseError
 from app.schemas.document_schemas import DocumentParseCreate
-
-class DocumentParseNotFoundError(Exception):
-    """Levée quand un document n'existe pas en BDD."""
-    pass
-
-
-class DatabaseError(Exception):
-    """Erreur générique de base de données."""
-    pass
 
 async def create_parse(db: AsyncSession, data: DocumentParseCreate) -> DocumentParse:
     """  """
@@ -39,20 +31,23 @@ async def get_parse(db: AsyncSession, parse_id: int) -> DocumentParse | None:
 
     return document
 
-async def list_parses(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[DocumentParse]:
-    result = await db.execute(
-        select(DocumentParse)
-        .order_by(DocumentParses.created_at.desc())
-        .limit(limit)
-        .offset(skip)
-    ) 
-    return result.scalars().all()
+async def list_parses(db: AsyncSession, doc_id: int | None = None ,skip: int = 0, limit: int = 100) -> list[DocumentParse]:
+    result = = select(DocumentParse).order_by(DocumentParse.created_at.desc()).offset(skip).limit(limit)
+    if doc_id is not None:
+        stmt = stmt.where(DocumentParse.doc_id == doc_id)
+    
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+
+    
 
 
 async def delete_parse(db: AsyncSession, parse_id: int) -> None:
-    result = await db.execute(select(DocumentParse).filter(DocumentParse.parse_id == parse_id))
-    db_item = result.scalar_one_or_none()
-    await db.delete(db_item)
+    parse = await get_parse(db, parse_id)
+    await db.delete(parse)
     await db.commit()
     return None
+
 

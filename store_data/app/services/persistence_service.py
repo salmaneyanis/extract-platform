@@ -2,16 +2,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_model import Document
+from app.services.exceptions import DocumentNotFoundError, DatabaseError
 from app.schemas.document_schemas import DocumentCreate, DocumentUpdate
 
-class DocumentNotFoundError(Exception):
-    """Levée quand un document n'existe pas en BDD."""
-    pass
 
-
-class DatabaseError(Exception):
-    """Erreur générique de base de données."""
-    pass
 
 async def create_document(db: AsyncSession, data: DocumentCreate) -> Document:
     """  """
