@@ -64,7 +64,7 @@ class JobCreate(BaseModel):
 
 class JobUpdate(BaseModel): 
     status: Status | None = None
-    result: dict | None = None 
+    result: dict | None = None 
     error_message: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -75,7 +75,7 @@ class JobResponse(BaseModel):
     job_id: int
     job_type: str
     status: Status
-    result: dict | None = None
+    result: dict | None = None
     error_message: str | None = None
     created_at: datetime
     started_at: datetime | None = None
