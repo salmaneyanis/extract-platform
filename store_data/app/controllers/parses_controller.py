@@ -33,7 +33,7 @@ async def get(parse_id: int, db: AsyncSession = Depends(get_db) ):
 
 @router.get("", response_model=list[DocumentParseResponse])
 async def get_all(skip: int = Query(0,ge=0), limit: int = Query(100, ge=1, le=10000) ,db: AsyncSession = Depends(get_db)):
-    return await list_parses(db,skip,limit)
+    return await list_parses(db,skip=skip,limit=limit)
 
 
 

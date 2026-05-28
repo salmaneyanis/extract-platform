@@ -43,8 +43,8 @@ async def list_jobs(db: AsyncSession,doc_id: int | None = None , skip: int = 0, 
         ) 
     else:
         result = await db.execute(
-            select(DocumentParse)
-            .order_by(DocumentParses.created_at.desc())
+            select(Job)
+            .order_by(Job.created_at.desc())
             .limit(limit)
             .offset(skip)
         ) 
