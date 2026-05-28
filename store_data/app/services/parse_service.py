@@ -32,7 +32,7 @@ async def get_parse(db: AsyncSession, parse_id: int) -> DocumentParse | None:
     return document
 
 async def list_parses(db: AsyncSession, doc_id: int | None = None ,skip: int = 0, limit: int = 100) -> list[DocumentParse]:
-    result = = select(DocumentParse).order_by(DocumentParse.created_at.desc()).offset(skip).limit(limit)
+    stmt = select(DocumentParse).order_by(DocumentParse.created_at.desc()).offset(skip).limit(limit)
     if doc_id is not None:
         stmt = stmt.where(DocumentParse.doc_id == doc_id)
     
