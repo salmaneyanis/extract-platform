@@ -7,7 +7,7 @@ from app.schemas.document_schemas import (
     JobUpdate,
     JobResponse,
 )
-from app.services.persistence_service import (
+from app.services.job_service import (
     create_job,
     get_job,
     list_jobs,
@@ -15,7 +15,7 @@ from app.services.persistence_service import (
     delete_job,
 )
 
-from app.services.exceptions(
+from app.services.exceptions import (
     DatabaseError,
     JobNotFoundError,
 )

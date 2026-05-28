@@ -6,16 +6,16 @@ from app.schemas.document_schemas import (
     DocumentParseCreate,
     DocumentParseResponse,
 )
-from app.services.persistence_service import (
+from app.services.parse_service import (
     create_parse,
     get_parse,
-    list_parse,
+    list_parses,
     delete_parse,
 )
 
-from app.services.exceptions(
+from app.services.exceptions import (
     DatabaseError,
-    ParseNotFoundError,
+    DocumentParseNotFoundError,
 )
 
 router = APIRouter(prefix="/parses", tags=["parses"])
@@ -31,7 +31,7 @@ async def get(parse_id: int, db: AsyncSession = Depends(get_db) ):
     except ParseNotFoundError as e:
         raise HTTPException(status_code=404,detail=str(e))
 
-@router.get("", response_model=list[ParseResponse])
+@router.get("", response_model=list[DocumentParseResponse])
 async def get_all(skip: int = Query(0,ge=0), limit: int = Query(100, ge=1, le=10000) ,db: AsyncSession = Depends(get_db)):
     return await list_parses(db,skip,limit)
 
