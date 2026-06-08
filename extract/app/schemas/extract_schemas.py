@@ -46,7 +46,7 @@ class TableMode(str,Enum):
 
 class TableOptions(BaseModel):
     do_table_structure: bool | None = None
-    table_mode: TableMode | None = None
+    table_mode: TableMode | None = None
     do_cell_matching: bool | None = None
 
 class OcrOptions(BaseModel):
@@ -63,9 +63,9 @@ class ImageOptions(BaseModel):
 
 class ExtractRequest(BaseModel):
     doc_id: int | None = None
-    device: Device | None = None
-    output_format: OutputFormat | None = None
-    profile: ExtractProfile.BALANCED
+    device: Device = Device.AUTO
+    output_format: OutputFormat = OutputFormat.MARKDOWN
+    profile: ExtractProfile = ExtractProfile.BALANCED
     ocr: OcrOptions | None = None
     images: ImageOptions | None = None
     tables: TableOptions | None = None

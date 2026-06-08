@@ -1,9 +1,10 @@
 # config.py
 import os
 from pathlib import Path
-import copy
+from app.schemas.extract_schemas import ExtractProfile, TableMode
 
-# === Workers pour ThreadPoolExecu tor ===
+
+# === Workers pour ThreadPoolExecutor ===
 CPU_WORKERS = int(os.getenv("EXTRACT_CPU_WORKERS", "4"))
 GPU_WORKERS = int(os.getenv("EXTRACT_GPU_WORKERS", "1"))
 
@@ -81,7 +82,5 @@ PROFILES = {
 
 }
 
-config = PROFILES[profile]
 
-config = copy.deepcopy(PROFILES[profile])
 

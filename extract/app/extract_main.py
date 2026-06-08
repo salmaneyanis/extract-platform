@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from app.controllers.extract_controller import router as extract_router
 
 app = FastAPI(title="Extract Service")
+
+app.include_router(extract_router)
 
 
 @app.get("/health")
