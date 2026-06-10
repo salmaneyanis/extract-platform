@@ -4,6 +4,11 @@ from app.services.orchestration_service import process_document
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+@router.get("", status_code=200)
+async def test():
+    return {"test": "ok"}
+
+
 
 @router.post("", status_code=200, response_model=ProcessResponse)
 async def process(
