@@ -108,6 +108,42 @@ async def update_job(job_id, status, result=None):
     return resp.json()
 
 
+async def get_document_file(doc_id: int):
+    """Get file from retrieve for document."""
+    try:
+        async with httpx.AsyncClient(timeout=300) as client:
+            resp = await client.get(f"http://store_data:8003/documents/{doc_id}")
+            resp.raise_for_status()
+            doc_data = resp.json()
+            file_path = doc_data.get("file_path")
+
+            if not file_path:
+                raise ValueError(f"Document {doc_id} has no file_path")
+
+            resp = await client.get(f"http://retrieve:8002/files/{file_path}")
+            resp.raise_for_status()
+
+        return resp.content, doc_data["file_name"]
+    except Exception as e:
+        logger.error(f"Get document file failed: {e}", exc_info=True)
+        raise
+
+
+async def get_document_parses(doc_id: int):
+    """Get parses for document from store_data."""
+    try:
+        async with httpx.AsyncClient(timeout=300) as client:
+            resp = await client.get(f"http://store_data:8003/parses")
+            resp.raise_for_status()
+            all_parses = resp.json()
+
+        filtered_parses = [p for p in all_parses if p["doc_id"] == doc_id]
+        return filtered_parses
+    except Exception as e:
+        logger.error(f"Get document parses failed: {e}", exc_info=True)
+        raise
+
+
 async def extract_and_save(
     doc_id: int,
     output_format: str = "markdown",
@@ -217,3 +253,104 @@ async def process_document(
             "error": str(e),
             "processing_time_ms": (time.time() - start_time) * 1000,
         }
+
+
+# CRUD forwarding to store_data
+async def get_document(doc_id: int):
+    """Get single document."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(f"http://store_data:8003/documents/{doc_id}")
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def list_documents(skip: int = 0, limit: int = 100):
+    """List all documents."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(
+            "http://store_data:8003/documents",
+            params={"skip": skip, "limit": limit}
+        )
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def update_document(doc_id: int, data: dict):
+    """Update document."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.patch(
+            f"http://store_data:8003/documents/{doc_id}",
+            json=data
+        )
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def delete_document(doc_id: int):
+    """Delete document."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.delete(f"http://store_data:8003/documents/{doc_id}")
+        resp.raise_for_status()
+
+
+async def get_parse(parse_id: int):
+    """Get single parse."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(f"http://store_data:8003/parses/{parse_id}")
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def list_parses(skip: int = 0, limit: int = 100):
+    """List all parses."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(
+            "http://store_data:8003/parses",
+            params={"skip": skip, "limit": limit}
+        )
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def delete_parse(parse_id: int):
+    """Delete parse."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.delete(f"http://store_data:8003/parses/{parse_id}")
+        resp.raise_for_status()
+
+
+async def get_job(job_id: int):
+    """Get single job."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(f"http://store_data:8003/jobs/{job_id}")
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def list_jobs(skip: int = 0, limit: int = 100):
+    """List all jobs."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.get(
+            "http://store_data:8003/jobs",
+            params={"skip": skip, "limit": limit}
+        )
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def update_job_proxy(job_id: int, data: dict):
+    """Update job."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.patch(
+            f"http://store_data:8003/jobs/{job_id}",
+            json=data
+        )
+        resp.raise_for_status()
+    return resp.json()
+
+
+async def delete_job(job_id: int):
+    """Delete job."""
+    async with httpx.AsyncClient(timeout=300) as client:
+        resp = await client.delete(f"http://store_data:8003/jobs/{job_id}")
+        resp.raise_for_status()

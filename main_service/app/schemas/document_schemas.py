@@ -48,3 +48,18 @@ class ExtractOnlyResponse(BaseModel):
     device_used: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentUpdate(BaseModel):
+    file_path: str | None = None
+    file_size: int | None = None
+    content_type: str | None = None
+    status: Status | None = None
+
+
+class JobUpdate(BaseModel):
+    status: Status | None = None
+    result: dict | None = None
+    error_message: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
