@@ -1,8 +1,22 @@
 services:
-  main_services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - main_service
+    networks:
+      - frontend-network
+    restart: unless-stopped
+
+  main_service:
     build: ./main_service
     ports:
-      - "3000:8000"
+      - "8000:8000"
     environment:
       - EXTRACT_URL=http://extract:8001
       - RETRIEVE_URL=http://retrieve:8002
@@ -15,11 +29,14 @@ services:
       - retrieve-network
       - extract-network
       - store-network
+      - frontend-network
     restart: unless-stopped
   extract:
     build: ./extract
     ports:
       - "3001:8001"
+    volumes:
+    - ./extract:/app 
     networks:
       - extract-network
     restart: unless-stopped
@@ -71,5 +88,6 @@ networks:
   extract-network:
   store-network:
   db-network:
+  frontend-network:
 
     

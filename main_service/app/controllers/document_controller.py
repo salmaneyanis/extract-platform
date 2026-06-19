@@ -14,6 +14,7 @@ from app.services.orchestration_service import (
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
+# POST routes
 @router.post("", status_code=200, response_model=ProcessResponse)
 async def process(
     file: UploadFile = File(...),
@@ -98,6 +99,18 @@ async def extract_route(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# GET routes - generic first (no path params)
+@router.get("", status_code=200)
+async def list_documents_route(skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=10000)):
+    """List all documents."""
+    try:
+        docs = await list_documents(skip, limit)
+        return docs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# GET routes with specific paths (before generic {doc_id})
 @router.get("/{doc_id}/file", status_code=200)
 async def get_file(doc_id: int):
     """Download file from retrieve for document."""
@@ -123,6 +136,7 @@ async def get_document_parses_route(doc_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# GET routes - generic with path param (last)
 @router.get("/{doc_id}", status_code=200)
 async def get_document_route(doc_id: int):
     """Get single document."""
@@ -133,16 +147,7 @@ async def get_document_route(doc_id: int):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.get("", status_code=200)
-async def list_documents_route(skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=10000)):
-    """List all documents."""
-    try:
-        docs = await list_documents(skip, limit)
-        return docs
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+# PATCH/DELETE routes
 @router.patch("/{doc_id}", status_code=200)
 async def update_document_route(doc_id: int, data: DocumentUpdate):
     """Update document."""

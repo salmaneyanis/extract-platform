@@ -34,7 +34,7 @@ async def upload_document(file_content, file_name):
     return {"doc_id": doc_id, "status": "uploaded", "file_path": file_path}
 
 
-async def extract_document(file_path, output_format, device):
+async def extract_document(file_path, output_format, device, profile="balanced"):
     try:
         async with httpx.AsyncClient(timeout=300) as client:
             resp = await client.get(
@@ -48,6 +48,7 @@ async def extract_document(file_path, output_format, device):
                 "http://extract:8001/extract",
                 files=files,
                 data={
+                    "profile": profile,
                     "output_format": output_format,
                     "device": device,
                 },
@@ -153,6 +154,7 @@ async def extract_and_save(
     """Extract document déjà uploadé, save parse, create job."""
     try:
         async with httpx.AsyncClient(timeout=300) as client:
+            # Get document
             resp = await client.get(f"http://store_data:8003/documents/{doc_id}")
             resp.raise_for_status()
             doc_data = resp.json()
@@ -161,7 +163,13 @@ async def extract_and_save(
             if not file_path:
                 raise ValueError(f"Document {doc_id} has no file_path")
 
-        extract_result = await extract_document(file_path, output_format, device)
+            # Update status to PROCESSING
+            await client.patch(
+                f"http://store_data:8003/documents/{doc_id}",
+                json={"status": "PROCESSING"}
+            )
+
+        extract_result = await extract_document(file_path, output_format, device, profile)
         parse_result = await save_parse(
             doc_id,
             extract_result.get("content_markdown"),
@@ -180,6 +188,13 @@ async def extract_and_save(
             },
         )
 
+        # Update doc status to COMPLETED
+        async with httpx.AsyncClient(timeout=300) as client:
+            await client.patch(
+                f"http://store_data:8003/documents/{doc_id}",
+                json={"status": "COMPLETED"}
+            )
+
         return {
             "job_id": job_id,
             "doc_id": doc_id,
@@ -193,6 +208,12 @@ async def extract_and_save(
         }
     except Exception as e:
         logger.error(f"Extract and save failed: {e}", exc_info=True)
+        if doc_id:
+            async with httpx.AsyncClient(timeout=300) as client:
+                await client.patch(
+                    f"http://store_data:8003/documents/{doc_id}",
+                    json={"status": "FAILED"}
+                )
         raise
 
 
@@ -215,8 +236,15 @@ async def process_document(
         job_result = await create_job(doc_id)
         job_id = job_result["job_id"]
 
+        # Update status to PROCESSING
+        async with httpx.AsyncClient(timeout=300) as client:
+            await client.patch(
+                f"http://store_data:8003/documents/{doc_id}",
+                json={"status": "PROCESSING"}
+            )
+
         extract_result = await extract_document(
-            file_path, output_format, device
+            file_path, output_format, device, profile
         )
 
         parse_result = await save_parse(
@@ -235,6 +263,13 @@ async def process_document(
             },
         )
 
+        # Update doc status to COMPLETED
+        async with httpx.AsyncClient(timeout=300) as client:
+            await client.patch(
+                f"http://store_data:8003/documents/{doc_id}",
+                json={"status": "COMPLETED"}
+            )
+
         return {
             "job_id": job_id,
             "doc_id": doc_id,
@@ -246,6 +281,12 @@ async def process_document(
         logger.error(f"Process failed: {e}", exc_info=True)
         if job_id:
             await update_job(job_id, "failed", {"error": str(e)})
+        if doc_id:
+            async with httpx.AsyncClient(timeout=300) as client:
+                await client.patch(
+                    f"http://store_data:8003/documents/{doc_id}",
+                    json={"status": "FAILED"}
+                )
         return {
             "job_id": job_id,
             "doc_id": doc_id,
