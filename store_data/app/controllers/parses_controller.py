@@ -28,12 +28,17 @@ async def create( data: DocumentParseCreate,db: AsyncSession = Depends(get_db)):
 async def get(parse_id: int, db: AsyncSession = Depends(get_db) ):
     try:
         return await get_parse(db,parse_id)
-    except ParseNotFoundError as e:
+    except DocumentParseNotFoundError as e:
         raise HTTPException(status_code=404,detail=str(e))
 
 @router.get("", response_model=list[DocumentParseResponse])
-async def get_all(skip: int = Query(0,ge=0), limit: int = Query(100, ge=1, le=10000) ,db: AsyncSession = Depends(get_db)):
-    return await list_parses(db,skip=skip,limit=limit)
+async def get_all(
+    doc_id: int | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=10000),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_parses(db, doc_id=doc_id, skip=skip, limit=limit)
 
 
 

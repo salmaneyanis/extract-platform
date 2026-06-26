@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, BackgroundTasks
 from fastapi.responses import FileResponse
 from app.schemas.document_schemas import (
     ProcessResponse, Status, UploadResponse, ExtractOnlyResponse,
@@ -11,36 +11,48 @@ from app.services.orchestration_service import (
     get_job, list_jobs, update_job_proxy, delete_job
 )
 
+
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-# POST routes
-@router.post("", status_code=200, response_model=ProcessResponse)
+@router.post("", status_code=202, response_model=ProcessResponse)
 async def process(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    engine: str = Form(default="vlm"),
     profile: str = Form(default="balanced"),
     device: str = Form(default="auto"),
     output_format: str = Form(default="markdown"),
 ):
-    """Process document: upload → extract → save."""
+    """
+    Upload un document puis lance son extraction EN TÂCHE DE FOND.
+
+    Répond immédiatement (202) avec le doc_id. Le client suit l'avancement en
+    pollant GET /documents/{doc_id} (status: processing -> done/failed).
+
+    engine : "classic" (OCR Docling + profils) ou "vlm" (VLM Nanonets via Docling).
+    """
     try:
+        # 1. Upload SYNCHRONE : rapide, et on a besoin du doc_id pour répondre
         file_content = await file.read()
-        result = await process_document(
-            file_content=file_content,
-            file_name=file.filename,
-            profile=profile,
-            device=device,
+        upload_result = await upload_document(file_content, file.filename)
+        doc_id = upload_result["doc_id"]
+
+        # 2. Extraction EN TÂCHE DE FOND : longue, ne doit pas bloquer la réponse
+        background_tasks.add_task(
+            extract_and_save,
+            doc_id=doc_id,
             output_format=output_format,
+            device=device,
+            profile=profile,
+            engine=engine,
         )
 
-        if result["status"] == "failed":
-            raise HTTPException(status_code=400, detail=result.get("error"))
-
+        # 3. Réponse IMMÉDIATE
         return ProcessResponse(
-            job_id=result["job_id"],
-            doc_id=result["doc_id"],
-            status=Status(result["status"]),
-            processing_time_ms=result.get("processing_time_ms"),
+            doc_id=doc_id,
+            status=Status.PROCESSING,
+            message="Extraction démarrée en arrière-plan",
         )
     except HTTPException:
         raise
@@ -68,33 +80,27 @@ async def upload(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{doc_id}/extract", status_code=200, response_model=ExtractOnlyResponse)
+@router.post("/{doc_id}/extract", status_code=202) 
 async def extract_route(
     doc_id: int,
+    background_tasks: BackgroundTasks, 
     profile: str = Form(default="balanced"),
     device: str = Form(default="auto"),
     output_format: str = Form(default="markdown"),
 ):
-    """Extract document déjà uploadé."""
+    """Launch extract in background and return immediately."""
     try:
-        result = await extract_and_save(
+        # On lance la lourde fonction d'extraction en tâche de fond Python
+        background_tasks.add_task(
+            extract_and_save,
             doc_id=doc_id,
             output_format=output_format,
             device=device,
-            profile=profile,
+            profile=profile
         )
-
-        return ExtractOnlyResponse(
-            job_id=result["job_id"],
-            doc_id=result["doc_id"],
-            parse_id=result["parse_id"],
-            status=Status(result["status"]),
-            content_markdown=result.get("content_markdown"),
-            content_json=result.get("content_json"),
-            metadata=result.get("metadata"),
-            processing_time_ms=result.get("processing_time_ms"),
-            device_used=result.get("device_used"),
-        )
+        
+        # On répond TOUT DE SUITE au navigateur pour libérer l'interface
+        return {"message": "Extraction démarrée en arrière-plan", "doc_id": doc_id, "status": "processing"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

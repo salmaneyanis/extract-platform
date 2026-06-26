@@ -1,6 +1,14 @@
+# --- API ---
 fastapi==0.136.1
 uvicorn[standard]==0.46.0
 pydantic==2.13.3
-pydantic-settings==2.14.0
 python-multipart==0.0.27
-docling==2.92.0
+
+# --- Docling (pipeline classique + VlmPipeline) ---
+# docling tire ses propres dépendances (docling-core, docling-ibm-models,
+# easyocr, transformers, etc.). On laisse pip résoudre les versions.
+docling
+
+# Nanonets-OCR2-3B est basé sur Qwen2.5-VL ; transformers récent requis.
+# accelerate pour le device_map GPU.
+accelerate>=1.0.0

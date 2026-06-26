@@ -24,7 +24,7 @@ class DocumentUpdate(BaseModel):
     file_path: str | None = None
     file_size: int | None = None
     content_type: str | None = None
-    status: Status | None = None
+    status: str | None = None
 
 
 class DocumentResponse(BaseModel):
@@ -69,7 +69,6 @@ class JobUpdate(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
-
 class JobResponse(BaseModel):
     doc_id: int | None = None
     job_id: int
@@ -81,6 +80,7 @@ class JobResponse(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
+    # CORRECTION ICI : Remplacer model_coonfig par model_config
     model_config = ConfigDict(from_attributes=True)
 
 

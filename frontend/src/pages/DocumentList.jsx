@@ -1,112 +1,96 @@
-import React, { useState, useEffect } from 'react'
-import { documentApi } from '../services/api'
-import '../styles/DocumentList.css'
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { documentService } from '../services/api';
 
-export default function DocumentList({ onSelectDocument, refreshTrigger }) {
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+export default function DocumentList() {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchDocuments = async () => {
+    try {
+      const data = await documentService.getAllDocuments();
+      setDocuments(data.items || data);
+    } catch (err) {
+      setError("Impossible de charger l'historique des documents.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    loadDocuments()
-  }, [refreshTrigger])
+    fetchDocuments();
+    // Système de rafraîchissement automatique toutes les 5 secondes pour suivre le statut PROCESSING
+    const interval = setInterval(fetchDocuments, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const loadDocuments = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await documentApi.listDocuments(0, 100)
-      setDocuments(data || [])
-    } catch (err) {
-      setError('Erreur chargement documents: ' + err.message)
-    } finally {
-      setLoading(false)
+  const handleDelete = async (id) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ? (Suppression en cascade)")) {
+      try {
+        await documentService.deleteDocument(id);
+        // On s'assure de filtrer sur la bonne clé (doc_id)
+        setDocuments(documents.filter(doc => (doc.doc_id || doc.id) !== id));
+      } catch (err) {
+        alert("Erreur lors de la suppression du fichier.");
+      }
     }
-  }
+  };
 
-  const handleDelete = async (docId) => {
-    if (!window.confirm('Supprimer ce document?')) return
-    try {
-      await documentApi.deleteDocument(docId)
-      setDocuments(documents.filter(d => d.doc_id !== docId))
-    } catch (err) {
-      setError('Erreur suppression: ' + err.message)
-    }
-  }
-
-  const handleDownload = async (docId, filename) => {
-    try {
-      const blob = await documentApi.downloadFile(docId)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      setError('Erreur téléchargement: ' + err.message)
-    }
-  }
-
-  if (loading) return <div className="container"><p>Chargement...</p></div>
-  if (error) return <div className="container error">{error}</div>
+  if (loading) return <div className="loader">Chargement de la plateforme d'extraction...</div>;
+  if (error) return <div className="error-banner">{error}</div>;
 
   return (
-    <div className="container">
-      <h2>Documents</h2>
-      <button onClick={loadDocuments} className="btn-secondary">
-        Actualiser
-      </button>
+    <div className="list-container">
+      <div className="header-actions">
+        <h2>Suivi de l'activité d'extraction (Base PostgreSQL)</h2>
+        <Link to="/upload" className="btn-primary">Nouveau traitement</Link>
+      </div>
 
-      {documents.length === 0 ? (
-        <p className="empty">Aucun document. Uploadez-en un.</p>
-      ) : (
-        <table className="documents-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Filename</th>
-              <th>Status</th>
-              <th>Créé</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.map(doc => (
-              <tr key={doc.doc_id}>
-                <td>{doc.doc_id}</td>
-                <td>{doc.filename}</td>
-                <td>
-                  <span className={`status status-${doc.status?.toLowerCase()}`}>
-                    {doc.status || 'UNKNOWN'}
-                  </span>
-                </td>
-                <td>{new Date(doc.created_at).toLocaleString()}</td>
-                <td className="actions">
-                  <button
-                    onClick={() => onSelectDocument(doc)}
-                    className="btn-small btn-primary"
-                  >
-                    Voir
-                  </button>
-                  <button
-                    onClick={() => handleDownload(doc.doc_id, doc.filename)}
-                    className="btn-small btn-secondary"
-                  >
-                    Télécharger
-                  </button>
-                  <button
-                    onClick={() => handleDelete(doc.doc_id)}
-                    className="btn-small btn-danger"
-                  >
-                    Supprimer
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <table className="documents-table">
+        <thead>
+          <tr>
+            <th>Nom du fichier</th>
+            <th>Taille</th>
+            <th>Statut du cycle de vie</th>
+            <th>Actions applicatives</th>
+          </tr>
+        </thead>
+        <tbody>
+          {documents.length === 0 ? (
+            <tr><td colSpan="4" style={{ textAlign: 'center' }}>Aucun document sur le serveur.</td></tr>
+          ) : (
+            documents.map((doc) => {
+              // Récupération sécurisée du bon identifiant venant de l'API
+              const currentId = doc.doc_id || doc.id;
+
+              return (
+                <tr key={currentId}>
+                  <td><strong>{doc.file_name || doc.name}</strong></td>
+                  <td>{doc.file_size ? (doc.file_size / 1024 / 1024).toFixed(2) : 'N/A'} Mo</td>
+                  <td>
+                    {/* Gestion visuelle basée sur les status en minuscules (pending, processing, done, failed) */}
+                    <span className={`status-badge badge-${doc.status.toLowerCase()}`}>
+                      {doc.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="actions-cell">
+                      <Link to={`/document/${currentId}`} className="btn-view">
+                        {/* Le statut final de l'API est "done" et non plus "COMPLETED" */}
+                        {doc.status === 'done' ? 'Consulter le résultat' : 'Gérer l\'extraction'}
+                      </Link>
+                      <button onClick={() => handleDelete(currentId)} className="btn-delete">
+                        Supprimer
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
     </div>
-  )
+  );
 }

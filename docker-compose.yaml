@@ -31,15 +31,35 @@ services:
       - store-network
       - frontend-network
     restart: unless-stopped
+
   extract:
     build: ./extract
     ports:
       - "3001:8001"
+    environment:
+      - EXTRACT_DEFAULT_ENGINE=vlm
+      - VLM_MODEL_ID=nanonets/Nanonets-OCR2-3B
+      - VLM_MAX_NEW_TOKENS=4096
+      - EXTRACT_WORKERS=1
+      - EXTRACT_DEFAULT_DEVICE=auto
+      - HF_HOME=/models/hf
+    # GPU : nécessite NVIDIA Container Toolkit installé sur l'hôte.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     volumes:
-    - ./extract:/app 
+      # Cache des poids HuggingFace : évite de re-télécharger le modèle (~3 Go)
+      # à chaque rebuild/redémarrage. PAS de montage du code (./extract:/app)
+      # qui masquerait l'image buildée.
+      - hf_cache:/models/hf
     networks:
       - extract-network
     restart: unless-stopped
+
   retrieve:
     build: ./retrieve
     ports:
@@ -49,20 +69,18 @@ services:
     networks:
       - retrieve-network
     restart: unless-stopped
-    
+
   store_data:
     build: ./store_data
     ports:
-    - "3003:8003"
-    volumes:
-    - ./store_data:/app             
+      - "3003:8003"
     environment:
-    - DATABASE_URL=postgresql+asyncpg://user:pass@store_db:5432/mydb
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@store_db:5432/${POSTGRES_DB}
     depends_on:
-    - store_db
+      - store_db
     networks:
-    - store-network
-    - db-network
+      - store-network
+      - db-network
     restart: unless-stopped
 
   store_db:
@@ -82,12 +100,11 @@ services:
 volumes:
   postgres_data:
   retrieve_data:
-  
+  hf_cache:
+
 networks:
   retrieve-network:
   extract-network:
   store-network:
   db-network:
   frontend-network:
-
-    

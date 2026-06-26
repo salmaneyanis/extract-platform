@@ -3,12 +3,12 @@ FROM python:3.11.15-slim
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN pip install -r requirements.txt
 
 COPY . /app
 
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8003
 
-CMD ["uvicorn", "app.store_main:app", "--host","0.0.0.0","--port","8003"]
-
+CMD ["/app/entrypoint.sh"]

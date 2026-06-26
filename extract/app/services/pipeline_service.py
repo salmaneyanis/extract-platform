@@ -1,101 +1,77 @@
+"""
+Pipeline service : orchestration de l'extraction Docling (classic ou vlm).
+
+Exécute l'inférence Docling (synchrone, bloquante) dans un ThreadPoolExecutor
+pour ne pas bloquer l'event loop FastAPI, et mappe le résultat au format
+attendu par le controller.
+"""
+
+import asyncio
 import logging
-import json
-import time
-import tempfile
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
-from docling.document_converter import DocumentConverter
-from docling.datamodel.base_models import InputFormat
-
-from app.schemas.extract_schemas import OutputFormat, Device
-from app.services.docling_service import merge_options, build_pipeline_options_ocr
+from app.config import EXTRACT_WORKERS, DEFAULT_ENGINE
+from app.schemas.extract_schemas import Device, Engine, Profile
+from app.services.docling_service import parse_document, ParseError
 
 logger = logging.getLogger(__name__)
 
+_executor = ThreadPoolExecutor(max_workers=EXTRACT_WORKERS)
 
-def extract_document(
+
+async def extract_document(
     file_content: bytes,
-    profile,
-    output_format: OutputFormat = OutputFormat.MARKDOWN,
-    device: Device = Device.AUTO,
-    ocr=None,
-    images=None,
-    tables=None,
-):
+    filename: str = "document.pdf",
+    engine: str = None,
+    profile: str = "balanced",
+    device: str = "auto",
+) -> dict:
     """
-    Convert PDF/image to markdown/json.
-    MUST BE def, NOT async def — avoids blocking event loop.
+    Extrait un document avec Docling, sans bloquer l'event loop.
+
+    engine : "classic" ou "vlm" (défaut : DEFAULT_ENGINE)
+    profile : fast/balanced/accurate (utilisé par le moteur classic uniquement)
+    device : auto/gpu/cpu
     """
-    start_time = time.time()
+    engine = (engine or DEFAULT_ENGINE)
+    if isinstance(engine, Engine):
+        engine = engine.value
+    if isinstance(profile, Profile):
+        profile = profile.value
+    if isinstance(device, Device):
+        device = device.value
+
+    loop = asyncio.get_event_loop()
 
     try:
-        converter = DocumentConverter()
+        result = await loop.run_in_executor(
+            _executor,
+            parse_document,
+            file_content,
+            filename,
+            engine,
+            profile,
+            device,
+        )
+        return result
 
-        config = merge_options(profile, ocr, tables, images)
-
-        pdf_option = converter.format_to_options[InputFormat.PDF]
-        opts = pdf_option.pipeline_options
-
-        opts.do_ocr = config["ocr"]["do_ocr"]
-        opts.ocr_options.lang = config["ocr"]["lang"]
-        opts.ocr_options.force_full_page_ocr = config["ocr"]["force_full_page_ocr"]
-
-        if config["ocr"]["use_gpu"]:
-            opts.accelerator_options.device = "cuda"
-        else:
-            opts.accelerator_options.device = "cpu"
-
-        opts.do_table_structure = config["tables"]["do_table_structure"]
-        opts.table_structure_options.do_cell_matching = config["tables"]["do_cell_matching"]
-
-        from docling.datamodel.pipeline_options import TableFormerMode
-        table_mode = config["tables"]["table_mode"]
-        if isinstance(table_mode, str):
-            table_mode = TableFormerMode(table_mode)
-        elif hasattr(table_mode, 'value'):
-            table_mode = TableFormerMode(table_mode.value)
-        opts.table_structure_options.mode = table_mode
-
-        opts.generate_picture_images = config["images"]["generate_picture_images"]
-        opts.generate_table_images = config["images"]["generate_table_images"]
-        opts.images_scale = config["images"]["images_scale"]
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-            tmp.write(file_content)
-            tmp_path = Path(tmp.name)
-
-        doc = converter.convert(tmp_path, raises_on_error=False)
-        tmp_path.unlink()
-
-        result = {}
-
-        if output_format in (OutputFormat.MARKDOWN, OutputFormat.BOTH):
-            result["content_markdown"] = doc.document.export_to_markdown()
-
-        if output_format in (OutputFormat.JSON, OutputFormat.BOTH):
-            result["content_json"] = json.loads(doc.document.export_to_json())
-
-        processing_time_ms = (time.time() - start_time) * 1000
-
-        return {
-            "status": "done",
-            "content_markdown": result.get("content_markdown"),
-            "content_json": result.get("content_json"),
-            "metadata": {
-                "pages": len(doc.document.pages),
-                "model": str(doc.model_name) if hasattr(doc, "model_name") else "unknown",
-            },
-            "processing_time_ms": processing_time_ms,
-            "device_used": device.value if isinstance(device, Device) else device,
-        }
-
-    except Exception as e:
-        logger.error(f"Extract failed: {e}", exc_info=True)
+    except ParseError as e:
+        logger.error(f"Extraction échouée : {e}")
         return {
             "status": "failed",
             "content_markdown": None,
             "content_json": None,
-            "metadata": {"error": str(e)},
-            "processing_time_ms": (time.time() - start_time) * 1000,
-            "device_used": device.value if isinstance(device, Device) else device,
+            "metadata": {"error": str(e), "engine": engine},
+            "processing_time_ms": 0.0,
+            "device_used": device,
+        }
+    except Exception as e:
+        logger.error(f"Erreur inattendue : {e}", exc_info=True)
+        return {
+            "status": "failed",
+            "content_markdown": None,
+            "content_json": None,
+            "metadata": {"error": str(e), "engine": engine},
+            "processing_time_ms": 0.0,
+            "device_used": device,
         }

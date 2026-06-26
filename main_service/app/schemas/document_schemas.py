@@ -11,10 +11,9 @@ class Status(str, Enum):
 
 
 class ProcessResponse(BaseModel):
-    job_id: int
     doc_id: int
     status: Status
-    processing_time_ms: float | None = None
+    message: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,7 +53,7 @@ class DocumentUpdate(BaseModel):
     file_path: str | None = None
     file_size: int | None = None
     content_type: str | None = None
-    status: Status | None = None
+    status: str | None = None
 
 
 class JobUpdate(BaseModel):

@@ -1,23 +1,43 @@
-FROM python:3.11.15-slim
+# Image CUDA 13 runtime (driver 580 / CUDA 13.0 sur le serveur GPU L4).
+FROM nvidia/cuda:13.0.0-runtime-ubuntu24.04
 
-# Dépendances système pour OpenCV/EasyOCR utilisés par Docling
-RUN apt-get update && apt-get install -y \
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/models/hf
+
+# Python 3.12 (Ubuntu 24.04) + dépendances système Docling :
+# poppler (PDF), libGL/glib (OpenCV pour EasyOCR/layout), tesseract optionnel.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    poppler-utils \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Venv (PEP 668 / externally-managed-environment d'Ubuntu 24).
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip setuptools wheel
+
+# torch + torchvision compilés pour CUDA 13 (cu130), AVANT docling pour que
+# pip ne réinstalle pas une version CPU. --index-strategy non dispo en pip
+# standard, donc on installe torch en premier depuis l'index cu130.
+RUN pip install --index-url https://download.pytorch.org/whl/cu130 \
+    torch torchvision
+
 COPY requirements.txt .
-
-RUN pip install -r requirements.txt
-
-RUN python -c "from docling.document_converter import DocumentConverter; DocumentConverter()"
-
+# unsafe-best-match permet à pip de prendre torch cu130 (déjà installé) tout
+# en résolvant docling depuis PyPI.
+RUN pip install -r requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cu130
 
 COPY . /app
 
 EXPOSE 8001
 
-CMD ["uvicorn", "app.extract_main:app", "--host","0.0.0.0","--port","8001"]
-
+CMD ["uvicorn", "app.extract_main:app", "--host", "0.0.0.0", "--port", "8001"]
